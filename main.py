@@ -1,4 +1,5 @@
 import time
+import sys
 import pandas as pd
 import json
 import requests
@@ -18,7 +19,6 @@ aws_port = config("AWS_PORT")
 
 # Pull API keys from .env file
 FMP_API_KEY = config("FMP_API_KEY")
-EOD_API_KEY = config("EOD_API_KEY")
 FMP_CLOUD_API_KEY = config("FMP_CLOUD_API_KEY")
 
 
@@ -72,7 +72,7 @@ def clean_earnings_data(df):
     return df
 
 
-def clean_pricing_data(df):
+def clean_pricing_data(df, today):
     """
     Clean pricing data by:
     - Adding one day to earnings_date
@@ -80,7 +80,7 @@ def clean_pricing_data(df):
     - Creating a unique ID
     - Changing date format
     """
-    df["date"] = (pd.to_datetime(df['date']) + timedelta(days=1)).dt.date
+    df.loc[:,'date'] = today
     df = df.drop(['label'], axis=1)
     df = create_unique_id(df)
     df = df.rename({'date': 'earnings_date', 'open': 'open_price', 'high': 'high_price', 'low': 'low_price',
@@ -105,29 +105,46 @@ def clean_technical_data(df):
         df["earnings_date"]).dt.strftime('%m-%d-%y')
     return df
 
+def check_dataframe_empty(df):
+    if df.empty:
+        sys.exit("{}: No earnings available".format(today))
+
 
 if __name__ == "__main__":
     start = time.time()
+    today = str((pd.to_datetime("2022-01-10")).date())
+    print(today)
+    last_day = str(((pd.to_datetime("2022-01-10")).date() - pd.tseries.offsets.BusinessDay(n=1)).date())
+    print(last_day)
+
+    # Find which day of the week it is
+    #weekno = datetime.datetime.today().weekday()
+    weekno = 0
+    # Exit program if it is the weekend (no eanings/pricing data)
+    if weekno >= 5:
+        sys.exit("{}: No data available on the weekend".format(today))
+
     # Setup SQL Alchemy for AWS database
     sqlalch_conn = "mysql+pymysql://{}:{}@{}/{}?charset=utf8mb4".format(
         aws_username, aws_password, aws_hostname, aws_database)
     engine = create_engine(sqlalch_conn, echo=False)
 
-    today = str(date.today())
-    yesterday = str(date.today() - timedelta(days=1))
     # Connect to FMP API and pull earnings data
     earnings_res = get_jsonparsed_data(
         "https://financialmodelingprep.com/api/v3/earning_calendar?from={}&to={}&apikey={}".format(today, today, FMP_API_KEY))
     earnings_df = pd.DataFrame(earnings_res)
+    check_dataframe_empty(earnings_df)
 
     # Filter earnings data
     earnings_filtered = clean_earnings_data(earnings_df)
+    check_dataframe_empty(earnings_filtered)
+    print(earnings_filtered)
 
-    try:
+    '''try:
         earnings_filtered.to_sql(
             "earnings_test", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print(e)
+        print("Data already exists in table")'''
 
     # Pull list of symbols
     symbols = earnings_filtered.symbol
@@ -136,7 +153,7 @@ if __name__ == "__main__":
     pricing_df = pd.DataFrame()
     for symbol in symbols:
         url = "https://financialmodelingprep.com/api/v3/historical-price-full/{}?from={}&to={}&apikey={}".format(
-            symbol, yesterday, yesterday, FMP_API_KEY)
+            symbol, last_day, last_day, FMP_API_KEY)
         res = get_jsonparsed_data(url)
         price_res_df = pd.DataFrame.from_records(res["historical"])
         # Insert symbol
@@ -145,17 +162,18 @@ if __name__ == "__main__":
         pricing_df = pd.concat([pricing_df, price_res_df])
 
     # Filter pricing data
-    pricing_filtered = clean_pricing_data(pricing_df)
-
-    try:
+    pricing_filtered = clean_pricing_data(pricing_df, today)
+    print(pricing_filtered)
+    '''try:
         pricing_filtered.to_sql(
             "pricing_test", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print(e)
+        print("Data already exists in table")'''
 
     indicators = ["sma_5", "sma_10", "sma_20", "ema_5", "ema_10",
                   "ema_20", "rsi_14", "wma_5", "wma_10", "wma_20"]
 
+    # Pull technical indicators for each stock in today's earnings list
     technical_df = pd.DataFrame()
     for symbol in symbols:
         technical_list = []
@@ -163,19 +181,24 @@ if __name__ == "__main__":
             func, period = indicator.split("_")
             url = "https://fmpcloud.io/api/v3/technical_indicator/daily/{}?period={}&type={}&apikey={}".format(
                 symbol, period, func, FMP_CLOUD_API_KEY)
-            technical_res = get_jsonparsed_data(url)
-            res_indicator = pd.DataFrame(technical_res)[func][0]
-            technical_list.append(res_indicator)
-        technical_series = pd.Series(technical_list, name=symbol)
+            tech_res = get_jsonparsed_data(url)
+            tech_res_df = pd.DataFrame(tech_res)
+            # Select indicator column for appropriate date
+            select = ((tech_res_df.loc[(tech_res_df["date"] == last_day)])[func]).iloc[0]
+            technical_list.append(select)
+        technical_series = pd.Series(technical_list)
         technical_df = technical_df.append(technical_series, ignore_index=True)
     symbol_series = pd.Series(symbols)
     technical_df.insert(0, "symbol", symbol_series.values)
     technical_df.insert(1, "date", today)
     technical_filtered = clean_technical_data(technical_df)
+    print(technical_filtered)
 
-    try:
+    ''' try:
         technical_filtered.to_sql(
             "technicals_test", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print(e)
-    print("Success...Execution Time: {}".format(time.time() - start))
+        print("Data already exists in table")'''
+
+    end = time.time() - start
+    print("{}: Successful execution. Execution time: {}".format(today, end))
