@@ -112,14 +112,12 @@ def check_dataframe_empty(df):
 
 if __name__ == "__main__":
     start = time.time()
-    today = str((pd.to_datetime("2022-01-10")).date())
-    print(today)
-    last_day = str(((pd.to_datetime("2022-01-10")).date() - pd.tseries.offsets.BusinessDay(n=1)).date())
-    print(last_day)
+    # Find today's and the last business day's date
+    today = str(date.today())
+    last_day = str((date.today() - pd.tseries.offsets.BusinessDay(n=1)).date())
 
     # Find which day of the week it is
-    #weekno = datetime.datetime.today().weekday()
-    weekno = 0
+    weekno = datetime.datetime.today().weekday()
     # Exit program if it is the weekend (no eanings/pricing data)
     if weekno >= 5:
         sys.exit("{}: No data available on the weekend".format(today))
@@ -138,13 +136,12 @@ if __name__ == "__main__":
     # Filter earnings data
     earnings_filtered = clean_earnings_data(earnings_df)
     check_dataframe_empty(earnings_filtered)
-    print(earnings_filtered)
 
-    '''try:
+    try:
         earnings_filtered.to_sql(
-            "earnings_test", con=engine, index=False, if_exists='append')
+            "earnings", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print("Data already exists in table")'''
+        print("Data already exists in table")
 
     # Pull list of symbols
     symbols = earnings_filtered.symbol
@@ -163,12 +160,12 @@ if __name__ == "__main__":
 
     # Filter pricing data
     pricing_filtered = clean_pricing_data(pricing_df, today)
-    print(pricing_filtered)
-    '''try:
+
+    try:
         pricing_filtered.to_sql(
-            "pricing_test", con=engine, index=False, if_exists='append')
+            "pricing", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print("Data already exists in table")'''
+        print("Data already exists in table")
 
     indicators = ["sma_5", "sma_10", "sma_20", "ema_5", "ema_10",
                   "ema_20", "rsi_14", "wma_5", "wma_10", "wma_20"]
@@ -178,6 +175,7 @@ if __name__ == "__main__":
     for symbol in symbols:
         technical_list = []
         for indicator in indicators:
+            # Gather functions and periods for API request
             func, period = indicator.split("_")
             url = "https://fmpcloud.io/api/v3/technical_indicator/daily/{}?period={}&type={}&apikey={}".format(
                 symbol, period, func, FMP_CLOUD_API_KEY)
@@ -186,19 +184,19 @@ if __name__ == "__main__":
             # Select indicator column for appropriate date
             select = ((tech_res_df.loc[(tech_res_df["date"] == last_day)])[func]).iloc[0]
             technical_list.append(select)
+        # Append list to be rows in dataframe
         technical_series = pd.Series(technical_list)
         technical_df = technical_df.append(technical_series, ignore_index=True)
     symbol_series = pd.Series(symbols)
     technical_df.insert(0, "symbol", symbol_series.values)
     technical_df.insert(1, "date", today)
     technical_filtered = clean_technical_data(technical_df)
-    print(technical_filtered)
 
-    ''' try:
+    try:
         technical_filtered.to_sql(
-            "technicals_test", con=engine, index=False, if_exists='append')
+            "technicals", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print("Data already exists in table")'''
+        print("Data already exists in table")
 
     end = time.time() - start
     print("{}: Successful execution. Execution time: {}".format(today, end))
