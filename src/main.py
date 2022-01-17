@@ -106,8 +106,12 @@ def clean_technical_data(df):
     return df
 
 def check_dataframe_empty(df):
+    message = "{}: No earnings available".format(today)
     if df.empty:
-        sys.exit("{}: No earnings available".format(today))
+        with open("logs.txt","a") as text_file:
+            text_file.write(message)
+            text_file.write('\n')
+        sys.exit(message)
 
 
 if __name__ == "__main__":
@@ -120,6 +124,10 @@ if __name__ == "__main__":
     weekno = datetime.datetime.today().weekday()
     # Exit program if it is the weekend (no eanings/pricing data)
     if weekno >= 5:
+        message = "{}: No data available on the weekend".format(today)
+        with open("logs.txt","a") as text_file:
+            text_file.write(message)
+            text_file.write('\n')
         sys.exit("{}: No data available on the weekend".format(today))
 
     # Setup SQL Alchemy for AWS database
@@ -199,4 +207,7 @@ if __name__ == "__main__":
         print("Data already exists in table")
 
     end = time.time() - start
-    print("{}: Successful execution. Execution time: {}".format(today, end))
+    success_msg = "{}: Successful execution. Execution time: {}".format(today, end)
+    with open("logs.txt","a") as text_file:
+        text_file.write(success_msg)
+        text_file.write('\n')
