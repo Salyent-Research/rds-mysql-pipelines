@@ -5,6 +5,7 @@ import json
 import requests
 import pymysql
 import datetime
+import holidays
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from decouple import config
@@ -68,7 +69,7 @@ def clean_earnings_data(df):
     df = df.rename({'date': 'earnings_date',
                    'epsEstimated': 'eps_estimated', 'time': 'earnings_time'}, axis=1)
     df["earnings_date"] = pd.to_datetime(
-        df["earnings_date"]).dt.strftime('%m-%d-%y')
+        df["earnings_date"]).dt.strftime('%m/%d/%y')
     return df
 
 
@@ -88,7 +89,7 @@ def clean_pricing_data(df, today):
                     'unadjustedVolume': 'unadjusted_volume', 'change': 'change_dollars',
                     'changePercent': 'change_percent', 'changeOverTime': 'change_over_time'}, axis=1)
     df["earnings_date"] = pd.to_datetime(
-        df["earnings_date"]).dt.strftime('%m-%d-%y')
+        df["earnings_date"]).dt.strftime('%m/%d/%y')
     return df
 
 
@@ -102,10 +103,10 @@ def clean_technical_data(df):
     df = df.rename({'date': 'earnings_date', 0: 'sma_5', 1: 'sma_10', 2: 'sma_20', 3: 'ema_5',
                    4: 'ema_10', 5: 'ema_20', 6: 'rsi_14', 7: 'wma_5', 8: 'wma_10', 9: 'wma_20'}, axis=1)
     df["earnings_date"] = pd.to_datetime(
-        df["earnings_date"]).dt.strftime('%m-%d-%y')
+        df["earnings_date"]).dt.strftime('%m/%d/%y')
     return df
 
-def check_dataframe_empty(df):
+def check_dataframe_empty(df, today):
     message = "{}: No earnings available".format(today)
     if df.empty:
         with open("logs.txt","a") as text_file:
@@ -113,12 +114,37 @@ def check_dataframe_empty(df):
             text_file.write('\n')
         sys.exit(message)
 
+def verify_dates(today, last_day):
+    us_holidays = holidays.US()
+    if today in us_holidays:
+        message = "{}: U.S. holiday. Exiting program.".format(today)
+        with open("logs.txt","a") as text_file:
+            text_file.write(message)
+            text_file.write('\n')
+        sys.exit(message)
+    elif last_day in us_holidays:
+        true_last_day = find_true_last_day(last_day, us_holidays)
+        message = "{}: Changed last_day to {}.".format(today, last_day)
+        with open("logs.txt","a") as text_file:
+            text_file.write(message)
+            text_file.write('\n')
+    return today, true_last_day
+
+# Recursive function that finds the true last business day, taking into account U.S. holidays
+def find_true_last_day(last_day, us_holidays):
+    if last_day in us_holidays:
+        temp_last_day = str((pd.to_datetime(last_day) - pd.tseries.offsets.BusinessDay(n=1)).date())
+        return find_true_last_day(temp_last_day, us_holidays)
+    else:
+        return last_day
+
 
 if __name__ == "__main__":
     start = time.time()
     # Find today's and the last business day's date
     today = str(date.today())
     last_day = str((date.today() - pd.tseries.offsets.BusinessDay(n=1)).date())
+    today, last_day = verify_dates(today, last_day)
 
     # Find which day of the week it is
     weekno = datetime.datetime.today().weekday()
@@ -139,11 +165,11 @@ if __name__ == "__main__":
     earnings_res = get_jsonparsed_data(
         "https://financialmodelingprep.com/api/v3/earning_calendar?from={}&to={}&apikey={}".format(today, today, FMP_API_KEY))
     earnings_df = pd.DataFrame(earnings_res)
-    check_dataframe_empty(earnings_df)
+    check_dataframe_empty(earnings_df, today)
 
     # Filter earnings data
     earnings_filtered = clean_earnings_data(earnings_df)
-    check_dataframe_empty(earnings_filtered)
+    check_dataframe_empty(earnings_filtered, today)
 
     try:
         earnings_filtered.to_sql(
