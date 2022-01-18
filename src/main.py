@@ -106,28 +106,19 @@ def clean_technical_data(df):
         df["earnings_date"]).dt.strftime('%m/%d/%y')
     return df
 
+# Check if dataframe is empty, exit if so
 def check_dataframe_empty(df, today):
-    message = "{}: No earnings available".format(today)
     if df.empty:
-        with open("logs.txt","a") as text_file:
-            text_file.write(message)
-            text_file.write('\n')
-        sys.exit(message)
+        sys.exit("{}: No earnings available".format(today))
 
+# Verify the integrity of dates by checking if its a business day and not a holiday
 def verify_dates(today, last_day):
     us_holidays = holidays.US()
     if today in us_holidays:
-        message = "{}: U.S. holiday. Exiting program.".format(today)
-        with open("logs.txt","a") as text_file:
-            text_file.write(message)
-            text_file.write('\n')
-        sys.exit(message)
+        sys.exit("{}: U.S. holiday. Exiting program.".format(today))
     elif last_day in us_holidays:
         true_last_day = find_true_last_day(last_day, us_holidays)
-        message = "{}: Changed last_day to {}.".format(today, last_day)
-        with open("logs.txt","a") as text_file:
-            text_file.write(message)
-            text_file.write('\n')
+        print("{}: Changed last_day to {}.".format(today, last_day))
     return today, true_last_day
 
 # Recursive function that finds the true last business day, taking into account U.S. holidays
@@ -150,12 +141,9 @@ if __name__ == "__main__":
     weekno = datetime.datetime.today().weekday()
     # Exit program if it is the weekend (no eanings/pricing data)
     if weekno >= 5:
-        message = "{}: No data available on the weekend".format(today)
-        with open("logs.txt","a") as text_file:
-            text_file.write(message)
-            text_file.write('\n')
         sys.exit("{}: No data available on the weekend".format(today))
 
+    print("{}: Beginning data pull...".format(today))
     # Setup SQL Alchemy for AWS database
     sqlalch_conn = "mysql+pymysql://{}:{}@{}/{}?charset=utf8mb4".format(
         aws_username, aws_password, aws_hostname, aws_database)
@@ -175,10 +163,11 @@ if __name__ == "__main__":
         earnings_filtered.to_sql(
             "earnings", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print("Data already exists in table")
+        print("Earnings data already exists in table")
 
     # Pull list of symbols
     symbols = earnings_filtered.symbol
+    print("Gathering data for {} earnings reports...".format(len(symbols)))
 
     # For each symbol pull today's pricing
     pricing_df = pd.DataFrame()
@@ -199,7 +188,7 @@ if __name__ == "__main__":
         pricing_filtered.to_sql(
             "pricing", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print("Data already exists in table")
+        print("Pricing data already exists in table")
 
     indicators = ["sma_5", "sma_10", "sma_20", "ema_5", "ema_10",
                   "ema_20", "rsi_14", "wma_5", "wma_10", "wma_20"]
@@ -230,10 +219,7 @@ if __name__ == "__main__":
         technical_filtered.to_sql(
             "technicals", con=engine, index=False, if_exists='append')
     except Exception as e:
-        print("Data already exists in table")
+        print("Technical data already exists in table")
 
     end = time.time() - start
-    success_msg = "{}: Successful execution. Execution time: {}".format(today, end)
-    with open("logs.txt","a") as text_file:
-        text_file.write(success_msg)
-        text_file.write('\n')
+    print("{}: Successful execution. Execution time: {}".format(today, end))
