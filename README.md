@@ -11,3 +11,10 @@ The pipeline is built on these frameworks and platforms:
 * PyMySQL
 * SQLAlchemy
 * Cron
+
+## Scheduling 
+The ETL pipeline is scheduled to run daily at 9:30 AM Coordinated Universal Time (UTC). This should be more than enough time for all external data providers to refresh their daily endpoints. The scheduling is handled by a cron job that changes directory into the cloned repository, runs the python program, and logs the output into a log file with the following command:
+
+```Shell
+30 09 * * * cd ~/rds-mysql-piplines/src && python3 main.py > ~/rds-mysql-pipelines/pipelines.log 2>&1
+```
