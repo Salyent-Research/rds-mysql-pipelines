@@ -117,9 +117,9 @@ def verify_dates(today, last_day):
     if today in us_holidays:
         sys.exit("{}: U.S. holiday. Exiting program.".format(today))
     elif last_day in us_holidays:
-        true_last_day = find_true_last_day(last_day, us_holidays)
+        last_day = find_true_last_day(last_day, us_holidays)
         print("{}: Changed last_day to {}.".format(today, last_day))
-    return today, true_last_day
+    return today, last_day
 
 # Recursive function that finds the true last business day, taking into account U.S. holidays
 def find_true_last_day(last_day, us_holidays):
