@@ -175,11 +175,14 @@ if __name__ == "__main__":
         url = "https://financialmodelingprep.com/api/v3/historical-price-full/{}?from={}&to={}&apikey={}".format(
             symbol, last_day, last_day, FMP_API_KEY)
         res = get_jsonparsed_data(url)
-        price_res_df = pd.DataFrame.from_records(res["historical"])
-        # Insert symbol
-        price_res_df.insert(1, "symbol", symbol)
-        # Concat with main dataframe
-        pricing_df = pd.concat([pricing_df, price_res_df])
+        try:
+            price_res_df = pd.DataFrame.from_records(res["historical"])
+            # Insert symbol
+            price_res_df.insert(1, "symbol", symbol)
+            # Concat with main dataframe
+            pricing_df = pd.concat([pricing_df, price_res_df])
+        except KeyError as ke:
+            print("Skipping symbol: {}. Error message: {}".format(symbol,ke))
 
     # Filter pricing data
     pricing_filtered = clean_pricing_data(pricing_df, today)
@@ -202,11 +205,14 @@ if __name__ == "__main__":
             func, period = indicator.split("_")
             url = "https://fmpcloud.io/api/v3/technical_indicator/daily/{}?period={}&type={}&apikey={}".format(
                 symbol, period, func, FMP_CLOUD_API_KEY)
-            tech_res = get_jsonparsed_data(url)
-            tech_res_df = pd.DataFrame(tech_res)
-            # Select indicator column for appropriate date
-            select = ((tech_res_df.loc[(tech_res_df["date"] == last_day)])[func]).iloc[0]
-            technical_list.append(select)
+            try:
+                tech_res = get_jsonparsed_data(url)
+                tech_res_df = pd.DataFrame(tech_res)
+                # Select indicator column for appropriate date
+                select = ((tech_res_df.loc[(tech_res_df["date"] == last_day)])[func]).iloc[0]
+                technical_list.append(select)
+            except IndexError as ie: 
+                print("Skipping symbol: {}. Error message: {}".format(symbol,ie))
         # Append list to be rows in dataframe
         technical_series = pd.Series(technical_list)
         technical_df = technical_df.append(technical_series, ignore_index=True)
