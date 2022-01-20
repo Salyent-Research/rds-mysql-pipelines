@@ -4,6 +4,8 @@ An ETL pipeline for collecting earnings related data from several data providers
 ## Data
 This pipeline parses through several API endpoints: [Financial Modeling Prep's](https://site.financialmodelingprep.com/developer/docs) earnings calendar and historical data endpoints and [FMP Cloud's](https://fmpcloud.io/documentation) daily technical indicator endpoint. For each upcoming earnings, the pipeline finds the most recent pricing data as well as price action technical indicators and loads it into an RDS instance running MySQL. 
 
+![Untitled Workspace (1)](https://user-images.githubusercontent.com/45079557/150410944-eb8c8e30-ac2d-4f23-bb03-cb5c3f489cfb.png)
+
 ## Built With
 The pipeline is built on these frameworks and platforms:
 * AWS: EC2, RDS MySQL Database
