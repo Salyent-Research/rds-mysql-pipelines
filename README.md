@@ -20,3 +20,6 @@ The ETL pipeline is scheduled to run daily at 9:30 AM Coordinated Universal Time
 ```Shell
 30 09 * * * cd ~/rds-mysql-piplines/src && python3 main.py > ~/rds-mysql-pipelines/pipelines.log 2>&1
 ```
+
+## Future Plans
+* Use collected data to train ML model 
