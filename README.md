@@ -7,7 +7,7 @@ The pipeline is built on these frameworks and platforms:
 * Python
 * PyMySQL
 * SQLAlchemy
-* Cron
+* Crontab
 
 ## Data
 This pipeline parses through several API endpoints: [Financial Modeling Prep's](https://site.financialmodelingprep.com/developer/docs) earnings calendar and historical data endpoints and [FMP Cloud's](https://fmpcloud.io/documentation) daily technical indicator endpoint. For each upcoming earnings announcement, the pipeline finds the most recent pricing data as well as price action technical indicators and loads it into an RDS instance running MySQL. 
