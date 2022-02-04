@@ -14,9 +14,6 @@ This pipeline parses through several API endpoints: [Financial Modeling Prep's](
 
 ![Untitled Workspace (1)](https://user-images.githubusercontent.com/45079557/150410944-eb8c8e30-ac2d-4f23-bb03-cb5c3f489cfb.png)
 
-## About the Data
-![Untitled Workspace (1)](https://github.com/brodyu/predicting-earnings-surprises/blob/main/visuals/histogram.pdf)
-
 ## Scheduling 
 The ETL pipeline is scheduled to run daily at 9:30 AM Coordinated Universal Time (UTC). This should be more than enough time for all external data providers to refresh their daily endpoints. The scheduling is handled by a cron job that changes directory into the cloned repository, runs the python program, and logs the output into a log file with the following command:
 
