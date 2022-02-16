@@ -12,7 +12,7 @@ The pipeline is built on these frameworks and platforms:
 ## Data
 This pipeline parses through several API endpoints: [Financial Modeling Prep's](https://site.financialmodelingprep.com/developer/docs) earnings calendar and historical data endpoints and [FMP Cloud's](https://fmpcloud.io/documentation) daily technical indicator endpoint. For each upcoming earnings announcement, the pipeline finds the most recent pricing data as well as price action technical indicators and loads it into an RDS instance running MySQL. 
 
-![earnings_surprise_star_schema](https://user-images.githubusercontent.com/45079557/154359462-07e08866-5bb6-4536-ae59-e51e244d7ceb.png)
+![earnings_surprise_star_schema](https://user-images.githubusercontent.com/45079557/154360159-5ced8568-37a8-4e07-beb6-9d496b956350.png)
 
 ## Scheduling 
 The ETL pipeline is scheduled to run daily at 9:30 AM Coordinated Universal Time (UTC). This should be more than enough time for all external data providers to refresh their daily endpoints. The scheduling is handled by a cron job that changes directory into the cloned repository, runs the python program, and logs the output into a log file with the following command:
