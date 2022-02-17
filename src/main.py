@@ -6,22 +6,11 @@ import requests
 import pymysql
 import datetime
 import holidays
+import boto3
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from decouple import config
 from datetime import date, timedelta
-
-# Set parameters for AWS database
-aws_hostname = config("AWS_HOST")
-aws_database = config("AWS_DB")
-aws_username = config("AWS_USER")
-aws_password = config("AWS_PASS")
-aws_port = config("AWS_PORT")
-
-# Pull API keys from .env file
-FMP_API_KEY = config("FMP_API_KEY")
-FMP_CLOUD_API_KEY = config("FMP_CLOUD_API_KEY")
-
 
 def get_jsonparsed_data(url):
     """
@@ -132,6 +121,28 @@ def find_true_last_day(last_day, us_holidays):
 
 if __name__ == "__main__":
     start = time.time()
+    # Connect to boto3 and pull parameters
+    client = boto3.client('ssm')
+    response = client.get_parameters(Names=[
+            "/rds-pipelines/dev/aws-db-name",
+            "/rds-pipelines/dev/aws-key",
+            "/rds-pipelines/dev/aws-port",
+            "/rds-pipelines/dev/aws-user",
+            "/rds-pipelines/dev/db-url",
+            "/rds-pipelines/dev/fmp-cloud-key",
+            "/rds-pipelines/dev/fmp-key"
+    ])
+    
+    aws_database = response['Parameters'][0]['Value']
+    aws_password = response['Parameters'][1]['Value']
+    aws_port = response['Parameters'][2]['Value']
+    aws_username = response['Parameters'][3]['Value']
+    aws_hostname = response['Parameters'][4]['Value']
+
+    # Pull API keys from .env file
+    FMP_CLOUD_API_KEY = response['Parameters'][5]['Value']
+    FMP_API_KEY = response['Parameters'][6]['Value']
+
     # Find today's and the last business day's date
     today = str(date.today())
     last_day = str((date.today() - pd.tseries.offsets.BusinessDay(n=1)).date())
